@@ -25,6 +25,8 @@
 
 .queen {
   animation: pop 0.2s ease-in;
+  color: rgb(26, 0, 0);
+  size: 2rem;
 }
 
 @keyframes pop {

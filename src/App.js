@@ -1,12 +1,11 @@
 import React, { useState, useRef } from "react";
 import Chessboard from "./components/Chessboard";
+import './App.css';
 import { visualSolveNQueens } from "./Solver/visualBacktrack";
 
 export default function App() {
   const [n, setN] = useState(8);
-  const [board, setBoard] = useState(
-    Array.from({ length: 8 }, () => Array(8).fill(0))
-  );
+  const [board, setBoard] = useState(Array.from({ length: 8 }, () => Array(8).fill(0)));
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [steps, setSteps] = useState([]);
@@ -14,15 +13,21 @@ export default function App() {
 
   const shouldStopRef = useRef(false);
   const pauseRef = useRef(false);
+  const solverPromiseRef = useRef(null);
 
   const appendStep = (msg, snapshotBoard) => {
     setSteps((prev) => [...prev, msg]);
     setSnapshots((prev) => [...prev, snapshotBoard.map((row) => [...row])]);
   };
 
-  const reset = () => {
+  const reset = async () => {
     shouldStopRef.current = true;
     pauseRef.current = false;
+
+    if (solverPromiseRef.current) {
+      await solverPromiseRef.current; // Wait for ongoing solver to cleanly exit
+    }
+
     setRunning(false);
     setPaused(false);
     setSteps([]);
@@ -36,8 +41,7 @@ export default function App() {
   };
 
   const handleSizeChange = (e) => {
-    const val = e.target.value;
-    setN(val); // Allow any typing
+    setN(e.target.value);
   };
 
   const startVisualization = async () => {
@@ -48,71 +52,50 @@ export default function App() {
     }
 
     setN(size);
-    reset();
-    await new Promise((res) => setTimeout(res, 100));
+    await reset();
+    await new Promise((res) => setTimeout(res, 100)); // Let UI reset
+
     shouldStopRef.current = false;
     setRunning(true);
 
-    await visualSolveNQueens(
+    solverPromiseRef.current = visualSolveNQueens(
       size,
       setBoard,
-      (msg) => appendStep(msg, board),
+      appendStep,
       () => {},
       400,
       shouldStopRef,
       pauseRef
     );
 
+    await solverPromiseRef.current;
+
     setRunning(false);
     setPaused(false);
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        fontFamily: "Arial",
-        backgroundColor: "#1e1e2f",
-        color: "white",
-        overflow: "hidden",
-      }}
-    >
+    <div className="app-container">
       {/* Snapshots Panel */}
-      <div
-        style={{
-          width: "22%",
-          padding: "10px",
-          overflowY: "auto",
-          backgroundColor: "#2a2a3d",
-          borderRight: "2px solid #333",
-        }}
-      >
-        <h3 style={{ textAlign: "center", marginBottom: "10px" }}>Snapshots</h3>
+      <div className="panel snapshots-panel">
+        <h3 className="panel-title">Snapshots</h3>
         {snapshots.map((snap, i) => (
-          <div key={i} style={{ marginBottom: "20px", textAlign: "center" }}>
-            <div
-              style={{
-                width: "100%",
-                aspectRatio: "1",
-              }}
-            >
+          <div key={i} className="snapshot-container">
+            <div className="snapshot-board">
               <Chessboard board={snap} small />
             </div>
-            <p style={{ fontSize: "0.8rem", marginTop: "4px", color: "#bbb" }}>
-              Step #{i + 1}
-            </p>
-            <hr style={{ borderColor: "#444" }} />
+            <p className="step-label">Step #{i + 1}</p>
+            <hr className="divider" />
           </div>
         ))}
       </div>
 
       {/* Main Board */}
-      <div style={{ flex: 1, padding: "20px", textAlign: "center" }}>
-        <h1 style={{ marginBottom: "20px" }}>♛ N-Queens Visualizer</h1>
+      <div className="main-panel">
+        <h1>♛ N-Queens Visualizer</h1>
 
-        <div style={{ marginBottom: "10px" }}>
-          <label style={{ marginRight: "10px" }}>
+        <div className="controls">
+          <label>
             Size:
             <input
               type="number"
@@ -121,82 +104,34 @@ export default function App() {
               max={12}
               onChange={handleSizeChange}
               disabled={running}
-              style={{
-                marginLeft: "5px",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                border: "none",
-              }}
+              className="input-box"
             />
           </label>
 
-          <button
-            onClick={startVisualization}
-            disabled={running}
-            style={{
-              marginLeft: "10px",
-              padding: "6px 16px",
-              backgroundColor: "#00c18c",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={startVisualization} disabled={running} className="btn start">
             Start
           </button>
 
-          <button
-            onClick={reset}
-            style={{
-              marginLeft: "10px",
-              padding: "6px 16px",
-              backgroundColor: "#ff5c5c",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={reset} className="btn reset">
             Reset
           </button>
 
-          <button
-            onClick={togglePause}
-            disabled={!running}
-            style={{
-              marginLeft: "10px",
-              padding: "6px 16px",
-              backgroundColor: "#ffc107",
-              color: "#000",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={togglePause} disabled={!running} className="btn pause">
             {paused ? "Resume" : "Pause"}
           </button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "center" }}>
+        <div className="main-board">
           <Chessboard board={board} />
         </div>
       </div>
 
       {/* Steps Panel */}
-      <div
-        style={{
-          width: "25%",
-          padding: "10px",
-          overflowY: "auto",
-          backgroundColor: "#2a2a3d",
-          borderLeft: "2px solid #333",
-        }}
-      >
-        <h3 style={{ textAlign: "center" }}>Steps</h3>
-        <ul style={{ fontSize: "0.9rem", paddingLeft: "18px", color: "#ccc" }}>
+      <div className="panel steps-panel">
+        <h3 className="panel-title">Steps</h3>
+        <ul className="steps-list">
           {steps.map((s, i) => (
-            <li key={i} style={{ marginBottom: "8px" }}>
+            <li key={i} className="step-item">
               {s}
             </li>
           ))}
